@@ -22,7 +22,7 @@ use rust_dsp::{
   waveshape::triangle,
 };
 
-const NUM_AMPS: usize = 12;
+const NUM_AMPS: usize = 16;
 
 type Ctrl = Vec<Receiver<f32>>;
 
