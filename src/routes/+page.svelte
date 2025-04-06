@@ -15,8 +15,7 @@
     e.preventDefault();
     const el = e.currentTarget as HTMLInputElement;
     const id = parseInt(el.id.substring(3));
-    // const val = parseFloat(el.value) / 100.0;
-    const val = parseFloat(amps[id]) / 100.0;
+    const val = normalize_amps(parseFloat(amps[id]));
     console.log(id + ": " + val);
     await invoke("amp", {n: id, val: val});
   }
@@ -28,6 +27,11 @@
       inputs.find((e, i) => {if (e.id == "amp"+i) { e.value = "0"; e.defaultValue = "0";}});
       await invoke("amp", {n: i, val: n})
     });
+  }
+
+
+  const normalize_amps = (val: number): number => {
+    return val / 100.0
   }
 </script>
 
