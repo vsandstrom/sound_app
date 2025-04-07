@@ -65,8 +65,6 @@ pub fn audio_process( running: Arc<AtomicBool>, ctrl: Arc<Mutex<Ctrl>>) {
           }
         }; 
 
-        dbg!("{}", mod_amount);
-
         let modulation = nz
           .iter_mut()
           .map(|n| 

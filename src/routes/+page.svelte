@@ -9,22 +9,20 @@
   let row1 = [...Array(NUM_FADERS/2).keys()];
   let row2 = [...Array(NUM_FADERS/2).keys()];
   row2.forEach((n, i, arr ) => { let num = NUM_FADERS / 2; arr[i] = n + num; });
-  console.log(row1)
-  console.log(row2)
 
   const amp = async (e: Event) => {
     e.preventDefault();
     const el = e.currentTarget as HTMLInputElement;
     const id = parseInt(el.id.substring(3));
     const val = normalize_amps(parseFloat(amps[id]));
-    console.log(id + ": " + val);
+    console.log("osv " + id + ": " + val);
     await invoke("amp", {n: id, val: val});
   }
 
   const modulation = async (e: Event) => {
     e.preventDefault();
     const val = normalize_amps(parseFloat(mod));
-    console.log(val);
+    console.log("modulation: " + val);
     await invoke("modulation", {val: val});
 }
 
@@ -53,7 +51,7 @@
   <input class="amp" id="amp{n}" type="range" bind:value={amps[n]} oninput={amp} step="0.001" min="0" max="100" defaultvalue="0">
   {/each}
   </div>
-  <div class="amps">
+  <div class="amps amps2">
   {#each row2 as n}
   <input class="amp" id="amp{n}" type="range" bind:value={amps[n]} oninput={amp} step="0.001" min="0" max="100" defaultvalue="0">
   {/each}
@@ -64,6 +62,7 @@
 
 <style>
 main {
+  justify-content: center;
   height: 100%;
   width: 100%;
 }
@@ -71,13 +70,12 @@ main {
 .amp {
   margin-top: 10%;
   rotate: -90deg;
-  margin-left: 2em;
+  margin-left: -5em;
 }
 
 .modulation {
-  position: absolute;
-  margin-top: 1em;
-  margin-left: 13em;
+  margin-top: 10%;
+  margin-left: 8%;
 }
 
 #modulation {
@@ -85,12 +83,18 @@ main {
 }
 
 .amps {
+  margin-top: 4%;
   display: flex;
+  align-self: center;
+  justify-content: center;
   flex-direction: row;
   flex-grow: 1;
-  margin-top: 12em;
   width: 100%;
   justify-content: center;
   align-content: space-between;
+}
+
+.amps2 {
+  margin-top: 10%;
 }
 </style>
