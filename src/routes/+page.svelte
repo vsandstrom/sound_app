@@ -4,7 +4,8 @@
   const NUM_FADERS = 16;
 
 
-  let amps = Array(NUM_FADERS).fill(0);
+  let amps = Array(NUM_FADERS).fill("0");
+  let mod: "0";
   let row1 = [...Array(NUM_FADERS/2).keys()];
   let row2 = [...Array(NUM_FADERS/2).keys()];
   row2.forEach((n, i, arr ) => { let num = NUM_FADERS / 2; arr[i] = n + num; });
@@ -19,6 +20,13 @@
     console.log(id + ": " + val);
     await invoke("amp", {n: id, val: val});
   }
+
+  const modulation = async (e: Event) => {
+    e.preventDefault();
+    const val = normalize_amps(parseFloat(mod));
+    console.log(val);
+    await invoke("modulation", {val: val});
+}
 
   const panic = async () => {
     let inputs = [...document.getElementsByTagName('input')];
@@ -37,14 +45,17 @@
 
 <main class="container">
 
+  <div class="modulation">
+    <input id="modulation" type="range" bind:value={mod} oninput={modulation} step="0.001" min="0" max="100" defaultvalue="0">
+  </div>
   <div class="amps">
   {#each row1 as n}
-  <input id="amp{n}" type="range" bind:value={amps[n]} oninput={amp} step="0.001" min="0" max="100" defaultvalue="0">
+  <input class="amp" id="amp{n}" type="range" bind:value={amps[n]} oninput={amp} step="0.001" min="0" max="100" defaultvalue="0">
   {/each}
   </div>
   <div class="amps">
   {#each row2 as n}
-  <input id="amp{n}" type="range" bind:value={amps[n]} oninput={amp} step="0.001" min="0" max="100" defaultvalue="0">
+  <input class="amp" id="amp{n}" type="range" bind:value={amps[n]} oninput={amp} step="0.001" min="0" max="100" defaultvalue="0">
   {/each}
   </div>
 
@@ -57,10 +68,20 @@ main {
   width: 100%;
 }
 
-input {
+.amp {
   margin-top: 10%;
   rotate: -90deg;
   margin-left: 2em;
+}
+
+.modulation {
+  position: absolute;
+  margin-top: 1em;
+  margin-left: 13em;
+}
+
+#modulation {
+  width: 200px;
 }
 
 .amps {

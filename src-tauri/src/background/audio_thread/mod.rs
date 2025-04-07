@@ -17,12 +17,15 @@ use cpal::{
 use rust_dsp::{
   interpolation::Linear, 
   waveshape::traits::Waveshape,
-  wavetable::shared::Wavetable
+  wavetable::shared::Wavetable,
+  noise::Noise,
+  dsp::signal::map
 };
 
 use super::Ctrl;
 
-const NUM_AMPS: usize = 16;
+const NUM_OSC: usize = 16;
+const NUM_PARTS: [u32; 4] = [1, 3, 5, 7];
 
 pub fn audio_process( running: Arc<AtomicBool>, ctrl: Arc<Mutex<Ctrl>>) {
   let host = cpal::default_host();
@@ -33,15 +36,17 @@ pub fn audio_process( running: Arc<AtomicBool>, ctrl: Arc<Mutex<Ctrl>>) {
   let samplerate = config.sample_rate.0 as f32;
   let ch = config.channels as usize;
 
-  let mut temp_amp = [0.0; NUM_AMPS];
+  let mut temp_amp = [0.0; NUM_OSC];
+  let mut temp_mod = 0.0;
 
   //
   // Audio Setup
   //
 
-  let mut wt: [Wavetable; NUM_AMPS] = std::array::from_fn(|_| Wavetable::new());
+  let mut wt: [Wavetable; NUM_OSC] = std::array::from_fn(|_| Wavetable::new());
+  let mut nz: [Noise; NUM_OSC] = std::array::from_fn(|_| Noise::new(samplerate));
   wt.iter_mut().for_each(|w| w.set_samplerate(samplerate));
-  let freq: [f32; NUM_AMPS] = std::array::from_fn(|i| (i as f32 + 1.0) * 45.0);
+  let freq: [f32; NUM_OSC] = std::array::from_fn(|i| (i as f32 + 1.0) * 45.0);
   let table = [0.0;2048].triangle();
 
   let input_callback = |_data: &[f32], _: &cpal::InputCallbackInfo| { };
@@ -50,10 +55,27 @@ pub fn audio_process( running: Arc<AtomicBool>, ctrl: Arc<Mutex<Ctrl>>) {
     data
       .chunks_mut(ch)
       .for_each(|frame| {
+
+        let mod_amount = {
+          if let Ok(m) = ctrl.lock() {
+            temp_mod = m.modulation.try_recv().unwrap_or(temp_mod);
+            temp_mod
+          } else {
+            temp_mod
+          }
+        }; 
+
+        dbg!("{}", mod_amount);
+
+        let modulation = nz
+          .iter_mut()
+          .map(|n| 
+            map(&mut n.play(1.0/12.0), -1.0, 1.0, 0.0, 1.0) * temp_mod
+          ).collect::<Vec<f32>>();
         let mut sig = 0.0;
         for (i, w) in wt.iter_mut().enumerate() {
           if let Ok(a) = ctrl.lock().unwrap().amps[i].try_recv() { temp_amp[i] = a; }
-          sig += w.play::<Linear>(&table, freq[i], 0.0) * temp_amp[i];
+          sig += w.play::<Linear>(&table, freq[i], modulation[i] * 0.004) * temp_amp[i];
         }
 
       frame.iter_mut().for_each(|sample| *sample = sig.tanh());

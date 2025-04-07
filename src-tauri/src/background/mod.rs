@@ -34,7 +34,8 @@ const NUM_AMPS: usize = 16;
 /// let ctrl = Arc::new(Mutex::new(Ctrl{amps: recv}));
 /// ```
 struct Ctrl {
-  amps: Vec<Receiver<f32>>
+  amps: Vec<Receiver<f32>>,
+  modulation: Receiver<f32>
 }
 
 // type Ctrl = Vec<Receiver<f32>>;
@@ -42,7 +43,8 @@ struct Ctrl {
 pub struct BackgroundWorker {
   running: Arc<AtomicBool>,
   join: Option<JoinHandle<()>>,
-  pub amp_setter: Vec<Sender<f32>>
+  pub amp_setter: Vec<Sender<f32>>,
+  pub mod_setter: Sender<f32>
 }
 
 impl Drop for BackgroundWorker {
@@ -62,11 +64,13 @@ impl BackgroundWorker {
       send.push(tx);
       recv.push(rx);
     };
+
+    let (mod_tx, mod_rx) = channel();
     
     // spawn bg thread
     let running = Arc::new(AtomicBool::new(true));
     let running_clone = running.clone();
-    let ctrl = Arc::new(Mutex::new(Ctrl{amps: recv}));
+    let ctrl = Arc::new(Mutex::new(Ctrl{amps: recv, modulation: mod_rx}));
     let join = std::thread::spawn(move || {
         audio_process(running_clone, ctrl);
     });
@@ -74,7 +78,8 @@ impl BackgroundWorker {
     Self {
       join: Some(join),
       running,
-      amp_setter: send
+      amp_setter: send,
+      mod_setter: mod_tx
     }
   }
 }
