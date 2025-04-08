@@ -18,6 +18,20 @@ fn modulation(val: f32, state: State<'_, Mutex<BackgroundWorker>>) {
   }
 }
 
+#[tauri::command]
+fn fm(val: f32, state: State<'_, Mutex<BackgroundWorker>>) {
+  if let Ok(bg) = state.try_lock() {
+    bg.fm_setter.send(val).unwrap();
+  }
+}
+
+#[tauri::command]
+fn fb(val: f32, state: State<'_, Mutex<BackgroundWorker>>) {
+  if let Ok(bg) = state.try_lock() {
+    bg.fb_setter.send(val).unwrap();
+  }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   // create the background worker handling the audio thread
@@ -31,7 +45,7 @@ pub fn run() {
       app.manage(Mutex::new(bg));
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![amp, modulation])
+    .invoke_handler(tauri::generate_handler![amp, modulation, fm, fb])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
