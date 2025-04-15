@@ -1,14 +1,12 @@
 mod audio_thread;
 
 use std::{
-  sync::{
-    atomic::{AtomicBool, Ordering},
-    mpsc::{channel, Receiver, Sender}, 
-    Arc,
-    Mutex
-  }, 
+  sync::{ atomic::{AtomicBool, Ordering}, Arc }, 
   thread::JoinHandle,
 };
+
+use parking_lot::Mutex;
+use crossbeam_channel::{unbounded, Receiver, Sender};
 
 use audio_thread::audio_process;
 
@@ -25,13 +23,13 @@ const NUM_AMPS: usize = 16;
 /// // `recv` will be passed to subprocess 
 /// let mut recv = Vec::with_capacity(NUM);
 /// for _ in 0..NUM {
-///   let (tx, rx) = channel(); 
+///   let (tx, rx) = unbounded(); 
 ///   send.push(tx); 
 ///   recv.push(rx); 
 /// };
-/// let (mod_tx, mod_rx) = channel();
-/// let (fm_tx, fm_rx) = channel();
-/// let (fb_tx, fb_rx) = channel();
+/// let (mod_tx, mod_rx) = unbounded();
+/// let (fm_tx, fm_rx) = unbounded();
+/// let (fb_tx, fb_rx) = unbounded();
 /// 
 /// // ready to be passed to another thread
 /// let ctrl = Arc::new(Mutex::new(Ctrl{amps: recv, modulation: mod_rx, fm: fm_rx, fb: fb_rx}));
@@ -67,14 +65,14 @@ impl BackgroundWorker {
     let mut send = Vec::with_capacity(NUM_AMPS);
     let mut recv = Vec::with_capacity(NUM_AMPS);
     for _ in 0..NUM_AMPS {
-      let (tx, rx) = channel();
+      let (tx, rx) = unbounded();
       send.push(tx);
       recv.push(rx);
     };
 
-    let (mod_tx, mod_rx) = channel();
-    let (fm_tx, fm_rx) = channel();
-    let (fb_tx, fb_rx) = channel();
+    let (mod_tx, mod_rx) = unbounded();
+    let (fm_tx, fm_rx) = unbounded();
+    let (fb_tx, fb_rx) = unbounded();
     
     // spawn bg thread
     let running = Arc::new(AtomicBool::new(true));
@@ -91,7 +89,6 @@ impl BackgroundWorker {
       mod_setter: mod_tx,
       fm_setter: fm_tx,
       fb_setter: fb_tx
-
     }
   }
 }

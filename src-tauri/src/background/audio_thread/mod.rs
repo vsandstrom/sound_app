@@ -1,11 +1,10 @@
-use std::{
-  sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-    Mutex
-  }, 
-  time::Duration
+use std::time::Duration;
+
+use super::{
+  AtomicBool, Ordering,
+  Mutex, Arc,
 };
+
 
 use cpal::{
   traits::{DeviceTrait, HostTrait, StreamTrait},
@@ -36,6 +35,7 @@ pub fn audio_process( running: Arc<AtomicBool>, ctrl: Arc<Mutex<Ctrl>>) {
   };
   let samplerate = config.sample_rate.0 as f32;
   let ch = config.channels as usize;
+  let mut fb = [0.0; NUM_OSC];
 
   let mut temp_amp = [0.0; NUM_OSC];
   let mut temp_mod = 0.0;
@@ -50,7 +50,7 @@ pub fn audio_process( running: Arc<AtomicBool>, ctrl: Arc<Mutex<Ctrl>>) {
   let mut nz: [Noise; NUM_OSC] = std::array::from_fn(|_| Noise::new(samplerate));
   wt.iter_mut().for_each(|w| w.set_samplerate(samplerate));
   let freq: [f32; NUM_OSC] = std::array::from_fn(|i| (i as f32 + 1.0) * 45.0);
-  let table = [0.0;2048].triangle();
+  let table = [0.0;2048].sine();
 
   let input_callback = |_data: &[f32], _: &cpal::InputCallbackInfo| { };
 
@@ -59,11 +59,11 @@ pub fn audio_process( running: Arc<AtomicBool>, ctrl: Arc<Mutex<Ctrl>>) {
       .chunks_mut(ch)
       .for_each(|frame| {
 
-        if let Ok(c) = ctrl.lock() {
-            temp_mod = c.modulation.try_recv().unwrap_or(temp_mod);
-            temp_fm = c.fm.try_recv().unwrap_or(temp_fm);
-            temp_fb = c.fb.try_recv().unwrap_or(temp_fb);
-        } 
+        if let Some(c) = ctrl.try_lock() {
+          temp_mod = c.modulation.try_recv().unwrap_or(temp_mod);
+          temp_fm = map(&mut c.fm.try_recv().unwrap_or(temp_fm), 0.0, 1.0, 0.0, 0.25);
+          temp_fb = map(&mut c.fb.try_recv().unwrap_or(temp_fb), 0.0, 1.0, 0.0, 0.25);
+        }
 
         let modulation = nz
           .iter_mut()
@@ -72,15 +72,19 @@ pub fn audio_process( running: Arc<AtomicBool>, ctrl: Arc<Mutex<Ctrl>>) {
           ).collect::<Vec<f32>>();
         let mut sig: f32 = 0.0;
         for (i, w) in wt.chunks_mut(4).enumerate() {
-          if let Ok(a) = ctrl.lock().unwrap().amps[i].try_recv() { temp_amp[i] = a; }
+          if let Ok(a) = ctrl.lock().amps[i].try_recv() { temp_amp[i] = a; }
           sig += w.iter_mut()
             .enumerate()
             .fold(0.0,|acc, (j, x)| {
-              acc + x.play::<Linear>(
+              let temp = x.play::<Linear>(
                 &table,
                 freq[i]*NUM_PARTS[j] as f32,
-                modulation[i] * 0.004 + acc / (j+1) as f32 * temp_fm) * temp_amp[i] * VOL_PARTS[j]}
-              )
+                (fb[i] * temp_fb) + modulation[i] * 0.004 + acc / (j+1) as f32 * temp_fm) * temp_amp[i] * VOL_PARTS[j];
+          fb[i] = temp;
+          acc + temp
+          }
+              
+              );
         }
 
       frame.iter_mut().for_each(|sample| *sample = sig.tanh());
