@@ -3,18 +3,28 @@
     import { parse } from "svelte/compiler";
 
   const NUM_FADERS = 16;
+  const NUM_FILTER = 12;
   let amps = Array(NUM_FADERS).fill("0");
+  let filt = Array(NUM_FADERS).fill("0");
   let mod: "0";
   let fm = "0";
   let fb = "0";
+  let mix = "0";
   let row1 = [...Array(NUM_FADERS/2).keys()];
   let row2 = [...Array(NUM_FADERS/2).keys()];
+  let row3 = [...Array(NUM_FILTER).keys()];
   row2.forEach((n, i, arr ) => { let num = NUM_FADERS / 2; arr[i] = n + num; });
 
   const amp = async (e: Event) => {
     e.preventDefault();
     const id = parseInt((e.currentTarget as HTMLInputElement).id.substring(3));
     await invoke("amp", {n: id, val: parseAndNormalize(amps[id])});
+  }
+  
+  const filter = async (e: Event) => {
+    e.preventDefault();
+    const id = parseInt((e.currentTarget as HTMLInputElement).id.substring(3));
+    await invoke("filter", {n: id, val: parseAndNormalize(filt[id])});
   }
 
   const modulation = async (e: Event) => {
@@ -31,6 +41,12 @@
     e.preventDefault();
     await invoke("fb", {val: parseAndNormalize(fb)});
   }
+
+  const filterMix = async(e: Event) => {
+    e.preventDefault();
+    await invoke("mix", {val: parseAndNormalize(mix)})
+  }
+  
 
   const panic = async (e: Event) => {
     e.preventDefault();
@@ -62,6 +78,14 @@
   <input class="amp" id="amp{n}" type="range" bind:value={amps[n]} oninput={amp} step="0.001" min="0" max="100" defaultvalue="0">
   {/each}
   </div>
+  <div class="amps amps2 filters">
+    {#each row3 as n}
+    <input class="filter" id="flt{n}" type="range" bind:value={filt[n]} oninput={filter} step="0.001" min="0" max="100" defaultvalue="0">
+    {/each}
+  </div>
+  <div class="modulation">
+    <input id="mix" type="range" bind:value={mix} oninput={filterMix} step="0.001" min="0" max="100" defaultvalue="0">
+  </div>
 
   <button onclick={panic}>PANIC</button>
 </main>
@@ -79,12 +103,18 @@ main {
   margin-left: -5em;
 }
 
+.filter {
+  margin-top: 10%;
+  rotate: -90deg;
+  margin-left: -7.5em;
+}
+
 .modulation {
   margin-top: 10%;
   margin-left: 8%;
 }
 
-#modulation, #freqmod, #feedback {
+#modulation, #freqmod, #feedback, #mix {
   width: 200px;
 }
 
@@ -104,5 +134,10 @@ main {
 
 .amps2 {
   margin-top: 10%;
+}
+
+.filters {
+  margin-left: 1em;
+
 }
 </style>

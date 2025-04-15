@@ -1,34 +1,48 @@
 mod background;
 use background::BackgroundWorker;
-use std::sync::Mutex;
+use parking_lot::Mutex;
 use tauri::Manager;
 use tauri::State;
 
 #[tauri::command]
 fn amp(n: usize, val: f32, state: State<'_, Mutex<BackgroundWorker>>) {
-  if let Ok(bg) = state.try_lock() {
+  if let Some(bg) = state.try_lock() {
     bg.amp_setter[n].send(val).unwrap(); 
   }
 }
 
 #[tauri::command]
+fn filter(n: usize, val: f32, state: State<'_, Mutex<BackgroundWorker>>) {
+  if let Some(bg) = state.try_lock() {
+    bg.filter_setter[n].send(val).unwrap();
+  }
+}
+
+#[tauri::command]
 fn modulation(val: f32, state: State<'_, Mutex<BackgroundWorker>>) {
-  if let Ok(bg) = state.try_lock() {
+  if let Some(bg) = state.try_lock() {
     bg.mod_setter.send(val).unwrap();
   }
 }
 
 #[tauri::command]
 fn fm(val: f32, state: State<'_, Mutex<BackgroundWorker>>) {
-  if let Ok(bg) = state.try_lock() {
+  if let Some(bg) = state.try_lock() {
     bg.fm_setter.send(val).unwrap();
   }
 }
 
 #[tauri::command]
 fn fb(val: f32, state: State<'_, Mutex<BackgroundWorker>>) {
-  if let Ok(bg) = state.try_lock() {
+  if let Some(bg) = state.try_lock() {
     bg.fb_setter.send(val).unwrap();
+  }
+}
+
+#[tauri::command]
+fn mix(val: f32, state: State<'_, Mutex<BackgroundWorker>>) {
+  if let Some(bg) = state.try_lock() {
+    bg.mix_setter.send(val).unwrap();
   }
 }
 
@@ -45,7 +59,7 @@ pub fn run() {
       app.manage(Mutex::new(bg));
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![amp, modulation, fm, fb])
+    .invoke_handler(tauri::generate_handler![amp, modulation, fm, fb, filter, mix])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
